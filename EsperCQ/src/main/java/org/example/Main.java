@@ -2,9 +2,16 @@ package org.example;
 
 import com.espertech.esper.common.client.EPCompiled;
 import com.espertech.esper.common.client.EventBean;
+import com.espertech.esper.common.client.EventPropertyDescriptor;
+import com.espertech.esper.common.client.EventType;
+import com.espertech.esper.common.client.meta.EventTypeApplicationType;
+import com.espertech.esper.common.client.meta.EventTypeMetadata;
 import com.espertech.esper.common.client.module.Module;
 import com.espertech.esper.common.client.module.ParseException;
 import com.espertech.esper.common.client.util.EventTypeBusModifier;
+import com.espertech.esper.common.client.util.SafeIterator;
+import com.espertech.esper.common.internal.event.arr.ObjectArrayEventType;
+import com.espertech.esper.common.internal.type.AnnotationTag;
 import com.espertech.esper.compiler.client.CompilerArguments;
 import com.espertech.esper.compiler.client.EPCompileException;
 import com.espertech.esper.compiler.client.EPCompiler;
@@ -12,118 +19,174 @@ import com.espertech.esper.compiler.client.EPCompilerProvider;
 import com.espertech.esper.runtime.client.*;
 import com.espertech.esper.common.client.configuration.Configuration;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.io.*;
+import java.util.*;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException, ParseException, EPCompileException, EPDeployException {
+    public static void main(String[] args) throws IOException, ParseException, EPCompileException, EPDeployException, InterruptedException {
 
-        String query_file = args.length > 0 ? args[0] : Objects.requireNonNull(Main.class.getResource("/basics.epl")).getPath();
-        String input_file = args.length > 2 ? args[2] : Objects.requireNonNull(Main.class.getResource("/A.stream")).getPath();
+//        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/01_basics.epl")).getPath());
+//        String statementId = "BasicProjectionA;BasicProjectionB;BasicSelectionA;BasicSelectionB;BasicSelectionB;BasicWindowedAggregation"; // you can run multiple statement at time separating them using semicolon
 
-        String eventTypeName = "Event";
-        String statementId = "SimpleSelect";
+//        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/02_tables.epl")).getPath());
+//        String statementId = "PopulateTableA;PopulateTableAgg1;PopulateTableTableAgg2;PullTableAgg"; // you can run multiple statement at time separating them using semicolon
+
+//        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/03_windows.epl")).getPath());
+//        String statementId = "LengthWindow;LengthWindowAggregate;TimeWindowSliding;TimeWindowHopping;TimeWindowTumbling;TimeBatch;KeepAll;KeepAllSnapshot;LastEvent;UniqueWindow;UniqueSnapshot;RankWindow;RankSnapshot";
+
+//        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/04_joins.epl")).getPath());
+//        String statementId = "InnerJoin;LeftJoin;FullOuterJoin;UnidirectionalJoin;StreamTableJoin";//
+
+        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/05_r2sop.epl")).getPath());
+        String statementId = "DStreamOutput";//
+
+        // 01_basics.epl includes examples for streaming projection and selection, with variants in EPL syntax (selection) on stream and tables
+        // available statements: SimpleProjectionA, SimpleProjectionB, SimpleSelectionA, SimpleSelectionB
+
+        // 04_aggregations.epl includes examples of basics aggregation function (max, min, avg), group by, order by, having
+        // 04_joins.epl contains examples of stream-stream and stream-table joins
+        // available statements: LeftJoin, UnidirectionalJoin
+
 
         Configuration config = new Configuration();
+
+        run(queryFile, statementId, config);
+
+    }
+
+
+    private static void run(File queryFile, String statementId, Configuration config) throws IOException, ParseException, EPCompileException, EPDeployException, InterruptedException {
         config.getRuntime().getThreading().setInternalTimerEnabled(false);
         config.getCompiler().getByteCode().setAccessModifiersPublic();
         config.getCompiler().getByteCode().setBusModifierEventType(EventTypeBusModifier.BUS);
 
         EPCompiler compiler = EPCompilerProvider.getCompiler();
 
-        //Reading input data file
-        FileReader in = new FileReader(input_file);
-        BufferedReader bufferedReader = new BufferedReader(in);
-
-
-        System.out.println("Event Schema is Registered.");
-
         EPRuntime esper = EPRuntimeProvider.getDefaultRuntime(config);
-        esper.getEventService().clockExternal();
+        esper.initialize();
         esper.getEventService().advanceTime(0);
 
-        esper.initialize();
-        File queryFile = new File(query_file);
 
         Module mod = compiler.readModule(queryFile);
 
-        EPCompiled compiled = compiler.compile(mod, new CompilerArguments(config));
+        CompilerArguments compilerArguments = new CompilerArguments(config);
+        EPCompiled compiled = compiler.compile(mod, compilerArguments);
 
         EPDeployment deploy = esper.getDeploymentService().deploy(compiled);
 
-        EPStatement statement = esper.getDeploymentService().getStatement(deploy.getDeploymentId(), statementId);
-        statement
-                .addListener((newEvents, oldEvents, statement1, runtime) -> {
+        List<Thread> threadList = new ArrayList<>();
 
-                    System.out.println("=== Begin Answer at [" + runtime.getEventService().getCurrentTime() + " ] ===");
+        Map<String, EventPropertyDescriptor[]> eventSchemas = new HashMap<>();
 
-                    if (newEvents != null) {
-                        System.out.println("New Events or Snapshot");
-                        for (EventBean newEvent : newEvents) {
-                            System.out.println(newEvent.getUnderlying());
-                        }
-                    }
-
-                    if (oldEvents != null) {
-                        System.out.println("Old Events");
-                        for (EventBean newEvent : oldEvents) {
-                            System.out.println(newEvent.getUnderlying());
-                        }
-                    }
-
-                    System.out.println("=== End Answer ===");
-
-                });
-
-        System.out.println("Query file created and compiled.");
-
-        long timestamp = 1000;
-
-        // Reading the first line of the file for the event schema
-        String s = bufferedReader.readLine();
-        System.out.println(s);
-        String[] schema = s.trim().split(",");
-
-        System.out.println("Start Streaming");
-        String e = bufferedReader.readLine();
-        while (e != null) {
-
-            String[] data = e.replace("[", "").replace("]", "").split(",");
-
-            Map<String, Object> event = new HashMap<>();
-            for (int i = 0; i < schema.length; i++) {
-                String[] attribute = schema[i].split("\\.");
-                Object value;
-                switch (attribute[1]) {
-                    case "integer":
-                        value = Integer.parseInt(data[i].trim());
-                        break;
-                    case "long":
-                        value = Long.parseLong(data[i].trim());
-                        break;
-                    default:
-                        value = data[i].trim();
+        for (EPStatement statement : deploy.getStatements()) {
+            AnnotationTag annotation = (AnnotationTag) statement.getAnnotations()[0];
+            if (annotation.value().equals("DML")) {
+                if (statementId.contains(statement.getName())) {
+                    if (statement.getName().contains("Pull")) {
+                        threadList.add(new Thread(() -> {
+                            while (true) {
+                                pullTable(statement);
+                            }
+                        }));
+                    } else statement.addListener(new LogListener());
                 }
-                event.put(attribute[0], value);
+            } else {
+                //Reading input data file
+                EventType eventType = statement.getEventType();
+                EventPropertyDescriptor[] propertyDescriptors = eventType.getPropertyDescriptors();
+                EventTypeMetadata metadata = eventType.getMetadata();
+                EventTypeApplicationType applicationType = metadata.getApplicationType();
+                if (applicationType.equals(EventTypeApplicationType.MAP)) {
+                    eventSchemas.put(eventType.getName(), propertyDescriptors);
+                }
             }
-
-            if (esper.getEventService().getCurrentTime() < timestamp)
-                esper.getEventService().advanceTime(timestamp);
-
-            esper.getEventService().sendEventMap(event, eventTypeName);
-            timestamp += 1000;
-            e = bufferedReader.readLine();
         }
 
-        //close file
-        bufferedReader.close();
-        in.close();
+        threadList.add(new Thread(() -> {
+
+            String input_file = Main.class.getResource("/Input.stream").getPath();
+
+            try {
+
+                FileReader in = new FileReader(input_file);
+                ;
+                BufferedReader bufferedReader = new BufferedReader(in);
+                // Reading the first line of the file for the event schema
+
+                String e = bufferedReader.readLine();
+
+                while (e != null) {
+                    String[] data = e.replace("[", "").replace("]", "").split(",");
+                    long nextTime = Long.parseLong(data[data.length - 1].trim());
+                    long currentTime = esper.getEventService().getCurrentTime();
+
+                    String type = "Event" + data[0].trim();
+                    if (!eventSchemas.containsKey(type))
+                        type = (String) eventSchemas.keySet().toArray()[0];
+                    //to avoid excessive dealy, we uniform the streams
+
+                    EventPropertyDescriptor[] propertyDescriptors = eventSchemas.get(type);
+
+                    Map<String, Object> event = new HashMap<>();
+
+                    for (int i = 0; i < propertyDescriptors.length; i++) {
+
+                        Object value = data[i].trim();
+                        if (Long.class.equals(propertyDescriptors[i].getPropertyType())) {
+                            value = Long.parseLong(data[i].trim());
+                        } else if (Integer.class.equals(propertyDescriptors[i].getPropertyType())) {
+                            value = Integer.parseInt(data[i].trim());
+                        } else if (Double.class.equals(propertyDescriptors[i].getPropertyType())) {
+                            value = Double.parseDouble(data[i].trim());
+                        }
+
+                        event.put(propertyDescriptors[i].getPropertyName(), value);
+                    }
+
+                    if (currentTime > nextTime) continue; //out of order
+                    else if (currentTime < nextTime) {
+                        System.err.println("Got an [" + type + "] at [" + nextTime + "]");
+                        esper.getEventService().advanceTime(nextTime);
+                    }
+
+                    esper.getEventService().sendEventMap(event, type);
+
+                    e = bufferedReader.readLine();
+
+                    //Create a realistic pace for the execution
+                    Thread.sleep(nextTime - currentTime);
+
+                }
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } catch (InterruptedException ex) {
+                throw new RuntimeException(ex);
+            }
+        }));
+
+        threadList.forEach(Thread::start);
+
+    }
+
+    private static void pullTable(EPStatement statement) {
+        SafeIterator<EventBean> eventBeanSafeIterator = statement.safeIterator();
+        while (eventBeanSafeIterator.hasNext()) {
+            EventBean next = eventBeanSafeIterator.next();
+            if (next.getEventType() instanceof ObjectArrayEventType) {
+                String[] propertyNames = next.getEventType().getPropertyNames();
+                for (String pn : propertyNames) {
+                    System.out.println(pn + "=" + next.get(pn));
+                }
+            }
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
 

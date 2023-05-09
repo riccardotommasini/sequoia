@@ -1,0 +1,33 @@
+@Tag(name="EPL", value="DDL") @EventRepresentation(map) create schema EventA (x string, y int);
+
+
+//The insert stream consists of the events entering the respective window(s) or stream(s) or aggregations,
+
+
+@Tag(name="EPL", value="DML")
+@name("Istream Function")
+select istream(), *
+from EventA#time(15 sec)
+output every 5 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("IRStream")
+select irstream *, istream()
+from EventA#time(15 sec)
+output every 5 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("IStream")
+select istream *, istream()
+from EventA#time(15 sec)
+output every 5 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("DStream")
+select rstream *
+from EventA#time(15 sec);
+//at listener level they are reported as newevents
+
+
+
+

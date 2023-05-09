@@ -1,0 +1,40 @@
+@Tag(name="EPL", value="DDL")
+@EventRepresentation(map) create schema EventA (x string, y int);
+
+@Tag(name="EPL", value="DDL")
+create table TableA (xkey string primary key, y int);
+
+@Tag(name="EPL", value="DML")
+@name("PopulateTableA") // Via Insert Into we can do simple insertion
+insert into TableA
+select x as xkey, y as y
+from EventA;
+
+@Tag(name="EPL", value="DML")
+@name("PullTableA")
+select * from TableA;
+
+@Tag(name="EPL", value="DDL")
+create table TableAgg (xkey string primary key, cnt5 count(*), cnt30 count(*));
+
+@Tag(name="EPL", value="DML")
+@name("PopulateTableAgg1")
+into table TableAgg // Into table is for inserting aggregates
+select count(*) as cnt5
+from EventA#time(5 seconds)
+group by x;
+
+@Tag(name="EPL", value="DML")
+@name("PopulateTableAgg2")
+into table TableAgg
+select count(*) as cnt30
+from EventA#time(30 seconds)
+group by x;
+
+//  Multiple statements can aggregate into the same table columns or different table columns. The co-aggregating ability allows you to co-locate aggregation state conveniently.
+
+@Tag(name="EPL", value="DML")
+@name("PullTableAgg")
+select * from TableAgg;
+
+//This statement can only be pulled or queries via "FireAndForget" (explain code)

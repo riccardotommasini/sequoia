@@ -1,0 +1,30 @@
+@Tag(name="EPL", value="DDL")
+@EventRepresentation(map) create schema EventA (x string, y int);
+
+@Tag(name="EPL", value="DML")
+@name("BasicProjectionA")
+select * from EventA;
+
+@Tag(name="EPL", value="DML")
+@name("BasicProjectionB")
+select x from EventA;
+
+@Tag(name="EPL", value="DML")
+@name("BasicSelectionA")
+select * from EventA where y > 2;
+
+@Tag(name="EPL", value="DML")
+@name("BasicSelectionB")
+select * from EventA(y=4);
+
+@Tag(name="EPL", value="DML")
+@name("BasicSelectionB")
+select count(*) as agg from EventA;
+
+//How long does the count go?
+
+@Tag(name="EPL", value="DML")
+@name("BasicWindowedAggregation")
+select count(*) as agg from EventA#time(5);
+
+//How long does the count go?

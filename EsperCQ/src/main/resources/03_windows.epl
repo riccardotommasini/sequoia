@@ -1,0 +1,80 @@
+@Tag(name="EPL", value="DDL") @EventRepresentation(map) create schema EventA (x string, y int, ts long);
+//@Tag(name="EPL", value="DDL") @EventRepresentation(map) create schema EventB (z string, k int, ts long);
+
+
+//Sliding Window
+
+@Tag(name="EPL", value="DML")
+@name("LengthWindow")
+select * from EventA#length(5);
+
+//Let's verify
+@Tag(name="EPL", value="DML")
+@name("LengthWindowAggregate")
+select count(*), sum(y) from EventA#length(5);
+
+//Get full content
+@Tag(name="EPL", value="DML")
+@name("TimeWindowSliding")
+select count(*), sum(y) from EventA#time(5);
+
+//Hopping Window
+
+@Tag(name="EPL", value="DML")
+@name("TimeWindowHopping")
+select *, count(*) from EventA#time(5)  output every 3 seconds;
+
+//Tumbling
+
+@Tag(name="EPL", value="DML")
+@name("TimeWindowTumbling")
+select x, count(*) from EventA#time(10)  output every 10 seconds;
+
+//Batch Window
+@Tag(name="EPL", value="DML")
+@name("TimeBatch")
+select x, count(*) from EventA#time_batch(10 seconds);
+
+//Difference between tumbling and batch is in the aggregation (in batch count is calculated at the end)
+
+//KeepAll
+
+// To observe the window we use the output snapshot
+// The all keyword is the default and specifies that all events in a batch should be output, each incoming row in the batch producing an output row. Note that for statements that group via the group by clause, the all keyword provides special behavior as below.
+
+// The first keyword specifies that only the first event in an output batch is to be output. Using the first keyword instructs the runtime to output the first matching event as soon as it arrives, and then ignores matching events for the time interval or number of events specified. After the time interval elapsed, or the number of matching events has been reached, the next first matching event is output again and the following interval the runtime again ignores matching events. For statements that group via the group by clause, the first keywords provides special behavior as below.
+
+// The last keyword specifies to only output the last event at the end of the given time interval or after the given number of matching events have been accumulated. Again, for statements that group via the group by clause the last keyword provides special behavior as below.
+
+// The snapshot keyword is often used with unbound streams and/or aggregation to output current aggregation results.
+
+@Tag(name="EPL", value="DML")
+@name("KeepAll")
+select x, y from EventA#keepall output snapshot every 5 seconds;
+
+//Last Event
+
+@Tag(name="EPL", value="DML")
+@name("LastEvent")
+select x, y from EventA#lastevent;
+
+//Unique
+
+@Tag(name="EPL", value="DML")
+@name("UniqueWindow")
+select * from EventA#unique(y);
+
+@Tag(name="EPL", value="DML")
+@name("UniqueSnapshot")
+select * from EventA#unique(y) output snapshot every 1 events;
+// behavior ala KSQL
+
+//Rank
+
+@Tag(name="EPL", value="DML")
+@name("RankWindow")
+select * from EventA#rank(x, 10, y desc);
+
+@Tag(name="EPL", value="DML")
+@name("RankSnapshot")
+select * from EventA#rank(x, 10, y desc) output snapshot every 1 events;
