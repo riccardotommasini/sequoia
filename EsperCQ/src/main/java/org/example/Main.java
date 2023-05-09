@@ -26,8 +26,8 @@ public class Main {
 
     public static void main(String[] args) throws IOException, ParseException, EPCompileException, EPDeployException, InterruptedException {
 
-//        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/01_basics.epl")).getPath());
-//        String statementId = "BasicProjectionA;BasicProjectionB;BasicSelectionA;BasicSelectionB;BasicSelectionB;BasicWindowedAggregation"; // you can run multiple statement at time separating them using semicolon
+        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/01_basics.epl")).getPath());
+        String statementId = "BasicProjectionA;BasicProjectionB;BasicSelectionA;BasicSelectionB;BasicSelectionB;BasicWindowedAggregation;BasicGroupedAggregation"; // you can run multiple statement at time separating them using semicolon
 
 //        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/02_tables.epl")).getPath());
 //        String statementId = "PopulateTableA;PopulateTableAgg1;PopulateTableTableAgg2;PullTableAgg"; // you can run multiple statement at time separating them using semicolon
@@ -38,8 +38,8 @@ public class Main {
 //        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/04_joins.epl")).getPath());
 //        String statementId = "InnerJoin;LeftJoin;FullOuterJoin;UnidirectionalJoin;StreamTableJoin";//
 
-        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/05_r2sop.epl")).getPath());
-        String statementId = "DStreamOutput";//
+//        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/05_r2sop.epl")).getPath());
+//        String statementId = "DStreamOutput";//
 
         // 01_basics.epl includes examples for streaming projection and selection, with variants in EPL syntax (selection) on stream and tables
         // available statements: SimpleProjectionA, SimpleProjectionB, SimpleSelectionA, SimpleSelectionB

@@ -19,12 +19,18 @@ select * from EventA(y=4);
 
 @Tag(name="EPL", value="DML")
 @name("BasicSelectionB")
-select count(*) as agg from EventA;
+select x, count(*) as agg from EventA;
 
 //How long does the count go?
 
 @Tag(name="EPL", value="DML")
 @name("BasicWindowedAggregation")
-select count(*) as agg from EventA#time(5);
+select x, count(*) as agg from EventA#time(5);
 
 //How long does the count go?
+
+@Tag(name="EPL", value="DML")
+@name("BasicGroupedAggregation")
+select x, count(*) as agg
+from EventA#time(5)
+group by x;
