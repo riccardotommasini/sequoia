@@ -1,0 +1,89 @@
+@Tag(name="EPL", value="DDL")
+@EventRepresentation(map) create schema StreamA (tid string, key string, val int, timestamp long);
+
+@Tag(name="EPL", value="DML")
+create window ConsistencyScopeWindow#time(5) as (tid string, conflicts string[]);
+
+@Tag(name="EPL", value="DML")
+@name("ConsistencyScope")
+insert into ConsistencyScopeWindow
+select S1.tid as tid, window(S2.tid)  as conflicts
+from StreamA#time(5 seconds) S1, StreamA#time(5 seconds) S2
+where S1.key=S2.key AND S1.val<>S2.val
+output all every 5 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("Query")
+insert into Answers
+select current_timestamp() as ans, window(tid) as tuples
+from StreamA#time(5)
+output snapshot every 5 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("Answers")
+select * from ConsistencyScopeWindow CS
+output snapshot every 5 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("Answers2")
+select S1.tid as tid, count(S2.tid) as conflictNum
+from StreamA#time(5) S1, StreamA#time(5) S2
+where S1.key=S2.key AND S1.val1<>S2.val1 AND S1.val2<>S2.val2
+group by S1.tid
+output every 10 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("S")
+insert into ConsistencyScope
+select S1.tid as tid ,
+ (select window( S2.tid )
+  from StreamA#length_batch(5) S2
+  where S1.key=S2.key AND (S1.val1<>S2.val1 OR S1.val2<>S2.val2)) as conflicts
+ from StreamA#length_batch(5) S1;
+
+
+@Tag(name="EPL", value="DDL")
+create table TableCScope (tid string primary key, conflicts string[]);
+
+@Tag(name="EPL", value="DML")
+@name("PopulateTableScope")
+insert into TableCScope
+select S1.tid as tid,
+     (select window( S2.tid )
+             from StreamA#time(10) S2
+             where
+                S1.key=S2.key AND (S1.val1<>S2.val1 OR S1.val2<>S2.val2)) as conflicts
+from StreamA S1
+output every 10 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("PTableScope")
+select * from TableCScope ;
+
+
+@Tag(name="EPL", value="DDL")
+create window WindowCScope#time(10) (tid string, conflicts string[]);
+
+@Tag(name="EPL", value="DML")
+@name("PopulateWindowScope")
+insert into WindowCScope
+select S1.tid as tid,
+     (select window( S2.tid )
+             from StreamA#time(10) S2
+             where
+                S1.key=S2.key AND (S1.val1<>S2.val1 OR S1.val2<>S2.val2)) as conflicts
+from StreamA S1
+output every 10 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("PWindowScope")
+select * from WindowCScope ;
+
+@Tag(name="EPL", value="DML")
+@name("FlattenConsistencyScope")
+insert into ConsistencyScopeFlat
+select S1.tid as tid , S2.tid as conflict
+from StreamA S1 unidirectional full outer join StreamA#time(10) S2
+having S1.key=S2.key AND (S1.val1<>S2.val1 OR S1.val2<>S2.val2)
+output every 10 seconds;
+

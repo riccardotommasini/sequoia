@@ -1,36 +1,46 @@
 @Tag(name="EPL", value="DDL")
-@EventRepresentation(map) create schema EventA (x string, y int);
+@EventRepresentation(map) create schema StreamA (x string, y int);
+
+@Tag(name="EPL", value="DDL")
+@EventRepresentation(map) create schema StreamB (p string, k int);
+
+@Tag(name="EPL", value="DDL")
+create variant schema StreamC as StreamA, StreamB;
 
 @Tag(name="EPL", value="DML")
 @name("BasicProjectionA")
-select * from EventA;
+insert into StreamC select * from StreamA;
 
 @Tag(name="EPL", value="DML")
 @name("BasicProjectionB")
-select x from EventA;
+insert into StreamC select * from StreamB;
+
+@Tag(name="EPL", value="DML")
+@name("Variant")
+select * from StreamC;
 
 @Tag(name="EPL", value="DML")
 @name("BasicSelectionA")
-select * from EventA where y > 2;
+select * from StreamA where y > 2;
 
 @Tag(name="EPL", value="DML")
 @name("BasicSelectionB")
-select * from EventA(y=4);
+select * from StreamA(y=4);
 
 @Tag(name="EPL", value="DML")
 @name("BasicSelectionB")
-select x, count(*) as agg from EventA;
+select x, count(*) as agg from StreamA;
 
 //How long does the count go?
 
 @Tag(name="EPL", value="DML")
 @name("BasicWindowedAggregation")
-select x, count(*) as agg from EventA#time(5);
+select x, count(*) as agg from StreamA#time(5);
 
 //How long does the count go?
 
 @Tag(name="EPL", value="DML")
 @name("BasicGroupedAggregation")
 select x, count(*) as agg
-from EventA#time(5)
+from StreamA#time(5)
 group by x;

@@ -1,7 +1,6 @@
-package org.example;
+package org.esper;
 
 import com.espertech.esper.common.client.EventBean;
-import com.espertech.esper.common.client.EventPropertyDescriptor;
 import com.espertech.esper.common.client.EventType;
 import com.espertech.esper.common.internal.event.arr.ObjectArrayEventType;
 import com.espertech.esper.common.internal.event.map.MapEventType;
@@ -9,8 +8,10 @@ import com.espertech.esper.runtime.client.EPRuntime;
 import com.espertech.esper.runtime.client.EPStatement;
 import com.espertech.esper.runtime.client.UpdateListener;
 
+import java.util.Arrays;
 
-public class LogListener implements UpdateListener {
+
+public class SATARListener implements UpdateListener {
     @Override
     public void update(EventBean[] newEvents, EventBean[] oldEvents, EPStatement statement, EPRuntime runtime) {
         System.out.println("=== Answer for [" + statement.getName() + "] at [" + runtime.getEventService().getCurrentTime() + "] ===");
@@ -36,7 +37,22 @@ public class LogListener implements UpdateListener {
             if (eventType instanceof ObjectArrayEventType) {
                 String[] propertyNames = eventType.getPropertyNames();
                 for (String pn : propertyNames) {
-                    System.out.println(pn + "=" + oldEvent.get(pn));
+                    String out;
+                    if (oldEvent.get(pn) instanceof String[]) {
+                        out = Arrays.deepToString((String[]) oldEvent.get(pn));
+                    } else
+                        out = oldEvent.get(pn).toString();
+                    System.out.println(pn + "=" + out);
+                }
+            } else if (eventType instanceof MapEventType) {
+                String[] propertyNames = eventType.getPropertyNames();
+                for (String pn : propertyNames) {
+                    String out;
+                    if (oldEvent.get(pn) instanceof String[]) {
+                        out = Arrays.deepToString((String[]) oldEvent.get(pn));
+                    } else
+                        out = oldEvent.get(pn).toString();
+                    System.out.println(pn + "=" + out);
                 }
             } else
                 System.out.println(oldEvent.getUnderlying());

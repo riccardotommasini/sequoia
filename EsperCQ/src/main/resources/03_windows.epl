@@ -1,39 +1,39 @@
-@Tag(name="EPL", value="DDL") @EventRepresentation(map) create schema EventA (x string, y int, ts long);
-//@Tag(name="EPL", value="DDL") @EventRepresentation(map) create schema EventB (z string, k int, ts long);
+@Tag(name="EPL", value="DDL") @EventRepresentation(map) create schema StreamA (x string, y int, ts long);
+//@Tag(name="EPL", value="DDL") @EventRepresentation(map) create schema StreamB (z string, k int, ts long);
 
 
 //Sliding Window
 
 @Tag(name="EPL", value="DML")
 @name("LengthWindow")
-select * from EventA#length(5);
+select * from StreamA#length(5);
 
 //Let's verify
 @Tag(name="EPL", value="DML")
 @name("LengthWindowAggregate")
-select count(*), sum(y) from EventA#length(5);
+select count(*), sum(y) from StreamA#length(5);
 
 //Get full content
 @Tag(name="EPL", value="DML")
 @name("TimeWindowSliding")
-select count(*), sum(y) from EventA#time(5);
+select count(*), sum(y) from StreamA#time(5);
 
 //Hopping Window
 
 @Tag(name="EPL", value="DML")
 @name("TimeWindowHopping")
-select *, count(*) from EventA#time(5)  output every 3 seconds;
+select *, count(*) from StreamA#time(5)  output every 3 seconds;
 
 //Tumbling
 
 @Tag(name="EPL", value="DML")
 @name("TimeWindowTumbling")
-select x, count(*) from EventA#time(10)  output every 10 seconds;
+select x, count(*) from StreamA#time(10) output every 10 seconds;
 
 //Batch Window
 @Tag(name="EPL", value="DML")
 @name("TimeBatch")
-select x, count(*) from EventA#time_batch(10 seconds);
+select x, count(*) from StreamA#time_batch(10 seconds);
 
 //Difference between tumbling and batch is in the aggregation (in batch count is calculated at the end)
 
@@ -50,31 +50,31 @@ select x, count(*) from EventA#time_batch(10 seconds);
 
 @Tag(name="EPL", value="DML")
 @name("KeepAll")
-select x, y from EventA#keepall output snapshot every 5 seconds;
+select x, y from StreamA#keepall output snapshot every 5 seconds;
 
 //Last Event
 
 @Tag(name="EPL", value="DML")
 @name("LastEvent")
-select x, y from EventA#lastevent;
+select x, y from StreamA#lastevent;
 
 //Unique
 
 @Tag(name="EPL", value="DML")
 @name("UniqueWindow")
-select * from EventA#unique(y);
+select * from StreamA#unique(y);
 
 @Tag(name="EPL", value="DML")
 @name("UniqueSnapshot")
-select * from EventA#unique(y) output snapshot every 1 events;
+select * from StreamA#unique(y) output snapshot every 1 events;
 // behavior ala KSQL
 
 //Rank
 
 @Tag(name="EPL", value="DML")
 @name("RankWindow")
-select * from EventA#rank(x, 10, y desc);
+select * from StreamA#rank(x, 10, y desc);
 
 @Tag(name="EPL", value="DML")
 @name("RankSnapshot")
-select * from EventA#rank(x, 10, y desc) output snapshot every 1 events;
+select * from StreamA#rank(x, 10, y desc) output snapshot every 1 events;

@@ -1,5 +1,5 @@
 @Tag(name="EPL", value="DDL")
-@EventRepresentation(map) create schema EventA (x string, y int);
+@EventRepresentation(map) create schema StreamA (x string, y int);
 
 @Tag(name="EPL", value="DDL")
 create table TableA (xkey string primary key, y int);
@@ -8,7 +8,7 @@ create table TableA (xkey string primary key, y int);
 @name("PopulateTableA") // Via Insert Into we can do simple insertion
 insert into TableA
 select x as xkey, y as y
-from EventA;
+from StreamA;
 
 @Tag(name="EPL", value="DML")
 @name("PullTableA")
@@ -21,14 +21,14 @@ create table TableAgg (xkey string primary key, cnt5 count(*), cnt30 count(*));
 @name("PopulateTableAgg1")
 into table TableAgg // Into table is for inserting aggregates
 select count(*) as cnt5
-from EventA#time(5 seconds)
+from StreamA#time(5 seconds)
 group by x;
 
 @Tag(name="EPL", value="DML")
 @name("PopulateTableAgg2")
 into table TableAgg
 select count(*) as cnt30
-from EventA#time(30 seconds)
+from StreamA#time(30 seconds)
 group by x;
 
 //  Multiple statements can aggregate into the same table columns or different table columns. The co-aggregating ability allows you to co-locate aggregation state conveniently.

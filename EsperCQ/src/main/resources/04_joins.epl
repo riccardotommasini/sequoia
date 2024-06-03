@@ -1,39 +1,39 @@
-@Tag(name="EPL", value="DDL") @EventRepresentation(map) create schema EventA (x string, y int);
-@Tag(name="EPL", value="DDL") @EventRepresentation(map) create schema EventB (z string, k int);
+@Tag(name="EPL", value="DDL") @EventRepresentation(map) create schema StreamA (x string, y int);
+@Tag(name="EPL", value="DDL") @EventRepresentation(map) create schema StreamB (z string, k int);
 
-// fail @name("JoinNoWindows") select A.x, B.z from EventA, EventB;
+// fail @name("JoinNoWindows") select A.x, B.z from StreamA, StreamB;
 
 //  The default join is an inner join which produces output events only when there is at least one match in all streams.
 //  The where-clause lists the join conditions that the compiler uses to relate events in the two or more streams.
 
 @Tag(name="EPL", value="DML")
-@name("JoinLastWindows") select A.x, B.z from EventA#lastevent A, EventB#lastevent B;
+@name("JoinLastWindows") select A.x, B.z from StreamA#lastevent A, StreamB#lastevent B;
 
 
 @Tag(name="EPL", value="DML")
 @name("InnerJoin")
 select A.y, B.k
-from EventA#keepall A inner join EventB#keepall B
+from StreamA#keepall A inner join StreamB#keepall B
 on A.y = B.k;
 
 @Tag(name="EPL", value="DML")
 @name("LeftJoin")
 select A.y, B.k
-from EventA#keepall A left outer join EventB#keepall B
+from StreamA#keepall A left outer join StreamB#keepall B
 on A.y = B.k;
 //  If the outer join is a left (right) outer join, there will be at least one output event for each event of the stream on the left(right)-hand side of the clause
 
 @Tag(name="EPL", value="DML")
 @name("FullOuterJoin")
 select A.y, B.k
-from EventA#keepall A full outer join EventB#keepall B
+from StreamA#keepall A full outer join StreamB#keepall B
 on A.y = B.k;
 // The next type of outer join is a full outer join. In a full outer join, each point in time that an event arrives to one of the event streams, one or more output events are produced.
 
 @Tag(name="EPL", value="DML")
 @name("UnidirectionalJoin")
 select A.y, B.k
-from EventA A unidirectional inner join EventB#keepall B
+from StreamA A unidirectional inner join StreamB#keepall B
 on A.y = B.k;
 
 // The unidirectional keyword can be used in the from clause to identify streams that provide the events to execute the join. If the keyword is present for a stream, all other streams in the from clause become passive streams. When events arrive or leave a data window of a passive stream then the join does not generate join results.
@@ -48,8 +48,9 @@ create table TableB (zkey string primary key, y max(int), cnt5 count(*));
 @name("PopulateTabB")
 into table TableB
 select z as zkey,  max(k) as y, count(*) as cnt5
-from EventB#time(5 seconds)
+from StreamB#time(5 seconds)
 group by z;
+
 
 //verify content of the table
 @Tag(name="EPL", value="DML")
@@ -59,12 +60,5 @@ select * from TableB;
 @Tag(name="EPL", value="DML")
 @name("StreamTableJoin")
 select A.y, A.x, B.cnt5, B.zkey
-from EventA A left outer join TableB B
+from StreamA A left outer join TableB B
 where A.y = B.y;
-
-//Variant Stream
-@Tag(name="EPL", value="DDL")
-create variant schema EventC as EventA, EventB;
-
-@Tag(name="EPL", value="DML")
-@name("Union") select * from EventC;

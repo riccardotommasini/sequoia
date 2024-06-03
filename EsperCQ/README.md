@@ -22,11 +22,11 @@ For example
 
 @Tag(name="EPL", value="DDL") 
 @EventRepresentation(map) 
-create schema EventA (x string, y int);
+create schema StreamA (x string, y int);
 
 @Tag(name="EPL", value="DDL") 
 @EventRepresentation(map)
-create schema EventC (z string, q int);
+create schema StreamB (z string, q int);
 
 ```
 

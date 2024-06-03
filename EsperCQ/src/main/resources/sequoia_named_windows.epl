@@ -1,0 +1,21 @@
+@Tag(name="EPL", value="DDL")
+@EventRepresentation(map) create schema StreamA (tid string, key string, val1 string, val2 int, timestamp long);
+
+@Tag(name="EPL", value="DDL")
+create window WindowCScope#time(10) (tid string, conflicts string[]);
+
+
+@Tag(name="EPL", value="DML")
+@name("PopulateWindowScope")
+insert into WindowCScope
+select S1.tid as tid,
+     (select window( S2.tid )
+             from StreamA#time(10) S2
+             where
+                S1.key=S2.key AND (S1.val1<>S2.val1 OR S1.val2<>S2.val2)) as conflicts
+from StreamA S1
+output every 10 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("PWindowScope")
+select * from WindowCScope ;

@@ -1,9 +1,10 @@
-package org.example;
+package org.esper;
 
 import com.espertech.esper.common.client.EPCompiled;
 import com.espertech.esper.common.client.EventBean;
 import com.espertech.esper.common.client.EventPropertyDescriptor;
 import com.espertech.esper.common.client.EventType;
+import com.espertech.esper.common.client.configuration.Configuration;
 import com.espertech.esper.common.client.meta.EventTypeApplicationType;
 import com.espertech.esper.common.client.meta.EventTypeMetadata;
 import com.espertech.esper.common.client.module.Module;
@@ -17,23 +18,26 @@ import com.espertech.esper.compiler.client.EPCompileException;
 import com.espertech.esper.compiler.client.EPCompiler;
 import com.espertech.esper.compiler.client.EPCompilerProvider;
 import com.espertech.esper.runtime.client.*;
-import com.espertech.esper.common.client.configuration.Configuration;
 
 import java.io.*;
 import java.util.*;
 
-public class Main {
+public class SeqNW {
+
+    private static String stream_file;
 
     public static void main(String[] args) throws IOException, ParseException, EPCompileException, EPDeployException, InterruptedException {
 
-        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/01_basics.epl")).getPath());
-        String statementId = "BasicProjectionA;BasicProjectionB;BasicSelectionA;BasicSelectionB;BasicSelectionB;BasicWindowedAggregation;BasicGroupedAggregation"; // you can run multiple statement at time separating them using semicolon
+        stream_file = "/sequoia0.stream";
+
+//        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/01_basics.epl")).getPath());
+//        String statementId = "BasicProjectionA";//BasicProjectionB;BasicSelectionA;BasicSelectionB;BasicWindowedAggregation;BasicGroupedAggregation"; // you can run multiple statement at time separating them using semicolon
 
 //        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/02_tables.epl")).getPath());
 //        String statementId = "PopulateTableA;PopulateTableAgg1;PopulateTableTableAgg2;PullTableAgg"; // you can run multiple statement at time separating them using semicolon
 
-//        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/03_windows.epl")).getPath());
-//        String statementId = "LengthWindow;LengthWindowAggregate;TimeWindowSliding;TimeWindowHopping;TimeWindowTumbling;TimeBatch;KeepAll;KeepAllSnapshot;LastEvent;UniqueWindow;UniqueSnapshot;RankWindow;RankSnapshot";
+        File queryFile = new File(Objects.requireNonNull(SeqNW.class.getResource("/sequoia_named_windows.epl")).getPath());
+        String statementId = "PWindowScope;";//LengthWindow;LengthWindowAggregate;TimeWindowSliding;TimeWindowHopping;TimeWindowTumbling;TimeBatch;KeepAll;KeepAllSnapshot;LastEvent;UniqueWindow;UniqueSnapshot;RankWindow;RankSnapshot";
 
 //        File queryFile = new File(Objects.requireNonNull(Main.class.getResource("/04_joins.epl")).getPath());
 //        String statementId = "InnerJoin;LeftJoin;FullOuterJoin;UnidirectionalJoin;StreamTableJoin";//
@@ -105,7 +109,7 @@ public class Main {
 
         threadList.add(new Thread(() -> {
 
-            String input_file = Main.class.getResource("/Input.stream").getPath();
+            String input_file = SeqNW.class.getResource(stream_file).getPath();
 
             try {
 
@@ -121,7 +125,7 @@ public class Main {
                     long nextTime = Long.parseLong(data[data.length - 1].trim());
                     long currentTime = esper.getEventService().getCurrentTime();
 
-                    String type = "Event" + data[0].trim();
+                    String type = "Stream" + data[0].trim();
                     if (!eventSchemas.containsKey(type))
                         type = (String) eventSchemas.keySet().toArray()[0];
                     //to avoid excessive dealy, we uniform the streams
@@ -146,7 +150,7 @@ public class Main {
 
                     if (currentTime > nextTime) continue; //out of order
                     else if (currentTime < nextTime) {
-                        System.err.println("Got an [" + type + "] at [" + nextTime + "]");
+                        System.err.println("Got an [" + data[0].trim() + "] at [" + nextTime + "]");
                         esper.getEventService().advanceTime(nextTime);
                     }
 

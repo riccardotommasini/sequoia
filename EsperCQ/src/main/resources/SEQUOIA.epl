@@ -1,0 +1,66 @@
+@Tag(name="EPL", value="DDL")
+@EventRepresentation(map) create schema StreamA (tid string, key string, val1 string, val2 int, timestamp long);
+
+@Tag(name="EPL", value="DML")
+@name("ConsistencyScope")
+insert into ConsistencyScope
+select (current_timestamp() - 1000) as ans, S1.tid as tid,
+     (select window( S2.tid )
+             from StreamA#time(10) S2
+             where
+                S1.key=S2.key AND (S1.val1<>S2.val1 OR S1.val2<>S2.val2)) as conflicts
+from StreamA S1
+output every 10 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("QuerySimpleAnswersAndCauses")
+insert into QuerySimpleAnswersAndCauses
+select distinct (current_timestamp() - 1000) as ans, S1.val1 as res
+      , (select window({S2.tid})
+                     from StreamA#time(10) S2
+                     where S2.val2 < 60
+                     ) as causes
+from StreamA S1
+having S1.val2 < 60
+output every 10 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("AnswersSimple")
+select S1.ans as ans, S1.res as res, S1.causes as causes, S2.conflicts as conflicts, S2.tid as tid
+from QuerySimpleAnswersAndCauses#time(20) S1, ConsistencyScope#time(10) S2
+where S1.ans = S2.ans AND S2.conflicts is not null
+output every 10 seconds;
+
+
+@Tag(name="EPL", value="DML")
+@name("QueryJoinCauses")
+insert into CauseStreamA
+select distinct (current_timestamp() - 1000) as ans, {S1.tid, S2.tid} cause
+from StreamA#time(10) S1, StreamA#time(10) S2
+having S1.val1 = S2.val1 AND (S1.val2 + S2.val2 < 120)
+output every 10 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("QueryJoinAnswers")
+insert into QueryJoinAns
+select distinct (current_timestamp() - 1000) as ans, S1.val1 as res
+from StreamA#time(10) S1, StreamA#time(10) S2
+having S1.val1 = S2.val1 AND (S1.val2 + S2.val2 < 120)
+output every 10 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("QueryJoinCausesAndAnswers")
+insert into QueryJoinCausesAndAnswers
+select distinct S1.ans, S1.res,
+    (select window(S2.cause)
+     from CauseStreamA#time(20) S2 //I am forced to expand the window for the induced delay
+     where S1.ans = S2.ans) as causes
+from QueryJoinAns S1
+output every 10 seconds;
+
+@Tag(name="EPL", value="DML")
+@name("AnswersJoin")
+select S1.ans as ans, S1.res as res, S1.causes as causes, S2.conflicts as conflicts, S2.tid as tid
+from QueryJoinCausesAndAnswers#time(20) S1, ConsistencyScope#time(20) S2
+where S1.ans = S2.ans AND S2.conflicts is not null
+output every 10 seconds;
